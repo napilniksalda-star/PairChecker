@@ -1,0 +1,269 @@
+﻿// РџСЂРёРјРµСЂ Unit-С‚РµСЃС‚РѕРІ РґР»СЏ FileChecker
+// Р”Р»СЏ РёСЃРїРѕР»СЊР·РѕРІР°РЅРёСЏ РЅРµРѕР±С…РѕРґРёРјРѕ СЃРѕР·РґР°С‚СЊ С‚РµСЃС‚РѕРІС‹Р№ РїСЂРѕРµРєС‚ Рё РґРѕР±Р°РІРёС‚СЊ NuGet РїР°РєРµС‚С‹:
+// - NUnit РёР»Рё xUnit
+// - NUnit3TestAdapter
+// - Microsoft.NET.Test.Sdk
+
+using NUnit.Framework;
+
+namespace PairChecker.Tests;
+
+[TestFixture]
+public class FileCheckerTests
+{
+    private string testFolder = string.Empty;
+
+    [SetUp]
+    public void Setup()
+    {
+        // РЎРѕР·РґР°РµРј РІСЂРµРјРµРЅРЅСѓСЋ РїР°РїРєСѓ РґР»СЏ С‚РµСЃС‚РѕРІ
+        testFolder = Path.Combine(Path.GetTempPath(), "PairCheckerTests", Guid.NewGuid().ToString());
+        Directory.CreateDirectory(testFolder);
+    }
+
+    [TearDown]
+    public void Cleanup()
+    {
+        // РЈРґР°Р»СЏРµРј РІСЂРµРјРµРЅРЅСѓСЋ РїР°РїРєСѓ РїРѕСЃР»Рµ С‚РµСЃС‚РѕРІ
+        if (Directory.Exists(testFolder))
+        {
+            Directory.Delete(testFolder, true);
+        }
+    }
+
+    [Test]
+    public async Task CheckFiles_WithMatchingPairs_ShouldReturnNoUnpairedFiles()
+    {
+        // Arrange
+        CreateTestFile("document1.pdf");
+        CreateTestFile("document1.dxf");
+        CreateTestFile("document2.pdf");
+        CreateTestFile("document2.dxf");
+
+        var checker = new FileChecker();
+
+        // Act
+        var result = await checker.CheckFilesAsync(testFolder, ".pdf", ".dxf", false);
+
+        // Assert
+        Assert.That(result.FirstWithoutPair.Count, Is.EqualTo(0));
+        Assert.That(result.SecondWithoutPair.Count, Is.EqualTo(0));
+        Assert.That(result.TotalFirstFiles, Is.EqualTo(2));
+        Assert.That(result.TotalSecondFiles, Is.EqualTo(2));
+    }
+
+    [Test]
+    public async Task CheckFiles_WithUnpairedFiles_ShouldFindThem()
+    {
+        // Arrange
+        CreateTestFile("document1.pdf");
+        CreateTestFile("document1.dxf");
+        CreateTestFile("document2.pdf"); // Р‘РµР· РїР°СЂС‹
+        CreateTestFile("document3.dxf"); // Р‘РµР· РїР°СЂС‹
+
+        var checker = new FileChecker();
+
+        // Act
+        var result = await checker.CheckFilesAsync(testFolder, ".pdf", ".dxf", false);
+
+        // Assert
+        Assert.That(result.FirstWithoutPair.Values.Sum(v => v.Count), Is.EqualTo(1));
+        Assert.That(result.SecondWithoutPair.Values.Sum(v => v.Count), Is.EqualTo(1));
+    }
+
+    [Test]
+    public async Task CheckFiles_Recursive_ShouldFindFilesInSubfolders()
+    {
+        // Arrange
+        var subFolder = Path.Combine(testFolder, "subfolder");
+        Directory.CreateDirectory(subFolder);
+
+        CreateTestFile("document1.pdf");
+        CreateTestFile("document1.dxf");
+        CreateTestFile(Path.Combine("subfolder", "document2.pdf"));
+        CreateTestFile(Path.Combine("subfolder", "document2.dxf"));
+
+        var checker = new FileChecker();
+
+        // Act
+        var result = await checker.CheckFilesAsync(testFolder, ".pdf", ".dxf", true);
+
+        // Assert
+        Assert.That(result.TotalFirstFiles, Is.EqualTo(2));
+        Assert.That(result.TotalSecondFiles, Is.EqualTo(2));
+    }
+
+    [Test]
+    public async Task CheckFiles_NonRecursive_ShouldIgnoreSubfolders()
+    {
+        // Arrange
+        var subFolder = Path.Combine(testFolder, "subfolder");
+        Directory.CreateDirectory(subFolder);
+
+        CreateTestFile("document1.pdf");
+        CreateTestFile("document1.dxf");
+        CreateTestFile(Path.Combine("subfolder", "document2.pdf"));
+        CreateTestFile(Path.Combine("subfolder", "document2.dxf"));
+
+        var checker = new FileChecker();
+
+        // Act
+        var result = await checker.CheckFilesAsync(testFolder, ".pdf", ".dxf", false);
+
+        // Assert
+        Assert.That(result.TotalFirstFiles, Is.EqualTo(1));
+        Assert.That(result.TotalSecondFiles, Is.EqualTo(1));
+    }
+
+    [Test]
+    public void CheckFiles_WithInvalidFolder_ShouldThrowException()
+    {
+        // Arrange
+        var checker = new FileChecker();
+        var invalidFolder = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+
+        // Act & Assert
+        Assert.ThrowsAsync<DirectoryNotFoundException>(async () =>
+            await checker.CheckFilesAsync(invalidFolder, ".pdf", ".dxf", false));
+    }
+
+    [Test]
+    public async Task CheckFiles_WithCancellation_ShouldThrowOperationCanceledException()
+    {
+        // Arrange
+        CreateManyTestFiles(1000); // РЎРѕР·РґР°РµРј РјРЅРѕРіРѕ С„Р°Р№Р»РѕРІ РґР»СЏ РґР»РёС‚РµР»СЊРЅРѕР№ РѕРїРµСЂР°С†РёРё
+        var checker = new FileChecker();
+        var cts = new CancellationTokenSource();
+
+        // Act
+        var task = checker.CheckFilesAsync(testFolder, ".pdf", ".dxf", false, cts.Token);
+        cts.Cancel(); // РћС‚РјРµРЅСЏРµРј РѕРїРµСЂР°С†РёСЋ
+
+        // Assert
+        Assert.ThrowsAsync<OperationCanceledException>(async () => await task);
+    }
+
+    [Test]
+    public async Task GenerateReport_ShouldContainAllSections()
+    {
+        // Arrange
+        CreateTestFile("document1.pdf");
+        CreateTestFile("document2.dxf");
+
+        var checker = new FileChecker();
+        var result = await checker.CheckFilesAsync(testFolder, ".pdf", ".dxf", false);
+
+        // Act
+        var report = FileChecker.GenerateReport(result, ".pdf", ".dxf");
+
+        // Assert
+        Assert.That(report, Does.Contain("Р¤РђР™Р›Р« Р‘Р•Р— РџРђР Р«"));
+        Assert.That(report, Does.Contain("РЎРўРђРўРРЎРўРРљРђ"));
+        Assert.That(report, Does.Contain(".PDF Р±РµР· .DXF РїР°СЂС‹"));
+        Assert.That(report, Does.Contain(".DXF Р±РµР· .PDF РїР°СЂС‹"));
+    }
+
+    [Test]
+    public async Task CheckFiles_ProgressEvent_ShouldBeRaised()
+    {
+        // Arrange
+        CreateTestFile("document1.pdf");
+        CreateTestFile("document1.dxf");
+
+        var checker = new FileChecker();
+        var progressEvents = new List<ProgressEventArgs>();
+        checker.ProgressChanged += (sender, e) => progressEvents.Add(e);
+
+        // Act
+        await checker.CheckFilesAsync(testFolder, ".pdf", ".dxf", false);
+
+        // Assert
+        Assert.That(progressEvents.Count, Is.GreaterThan(0));
+        Assert.That(progressEvents.Any(e => e.Percentage == 100), Is.True);
+    }
+
+    private void CreateTestFile(string relativePath)
+    {
+        var fullPath = Path.Combine(testFolder, relativePath);
+        var directory = Path.GetDirectoryName(fullPath);
+        if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+        File.WriteAllText(fullPath, "test content");
+    }
+
+    private void CreateManyTestFiles(int count)
+    {
+        for (int i = 0; i < count; i++)
+        {
+            CreateTestFile($"document{i}.pdf");
+            if (i % 2 == 0)
+            {
+                CreateTestFile($"document{i}.dxf");
+            }
+        }
+    }
+}
+
+[TestFixture]
+public class AppSettingsTests
+{
+    private string testSettingsPath = string.Empty;
+
+    [SetUp]
+    public void Setup()
+    {
+        // РСЃРїРѕР»СЊР·СѓРµРј РІСЂРµРјРµРЅРЅСѓСЋ РїР°РїРєСѓ РґР»СЏ С‚РµСЃС‚РѕРІ РЅР°СЃС‚СЂРѕРµРє
+        testSettingsPath = Path.Combine(Path.GetTempPath(), "PairCheckerSettingsTests");
+        if (Directory.Exists(testSettingsPath))
+        {
+            Directory.Delete(testSettingsPath, true);
+        }
+    }
+
+    [TearDown]
+    public void Cleanup()
+    {
+        if (Directory.Exists(testSettingsPath))
+        {
+            Directory.Delete(testSettingsPath, true);
+        }
+    }
+
+    [Test]
+    public void Load_WhenFileDoesNotExist_ShouldReturnDefaultSettings()
+    {
+        // Act
+        var settings = AppSettings.Load();
+
+        // Assert
+        Assert.That(settings, Is.Not.Null);
+        Assert.That(settings.LastFolder, Is.EqualTo(string.Empty));
+    }
+
+    [Test]
+    public void Save_ShouldCreateSettingsFile()
+    {
+        // Arrange
+        var settings = new AppSettings
+        {
+            LastFolder = ".\\Test",
+            LastFirstFormat = ".pdf",
+            LastSecondFormat = ".dxf",
+            LastRecursive = true
+        };
+
+        // Act
+        settings.Save();
+
+        // Assert
+        var loaded = AppSettings.Load();
+        Assert.That(loaded.LastFolder, Is.EqualTo(".\\Test"));
+        Assert.That(loaded.LastFirstFormat, Is.EqualTo(".pdf"));
+        Assert.That(loaded.LastSecondFormat, Is.EqualTo(".dxf"));
+        Assert.That(loaded.LastRecursive, Is.True);
+    }
+}
+
+
