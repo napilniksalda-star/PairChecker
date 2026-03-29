@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700">
+  <rect x="0" y="0" width="1200" height="700" fill="#0b1020"/>
+  <rect x="80" y="70" width="1040" height="560" rx="18" fill="#121a2e" stroke="#273252" stroke-width="2"/>
+  <rect x="80" y="70" width="1040" height="60" rx="18" fill="#1a2440"/>
+  <circle cx="120" cy="100" r="8" fill="#ff5f56"/>
+  <circle cx="150" cy="100" r="8" fill="#ffbd2e"/>
+  <circle cx="180" cy="100" r="8" fill="#27c93f"/>
+
+  <rect x="130" y="170" width="520" height="60" rx="10" fill="#0f1628" stroke="#2a3558"/>
+  <rect x="130" y="250" width="250" height="50" rx="10" fill="#0f1628" stroke="#2a3558"/>
+  <rect x="400" y="250" width="250" height="50" rx="10" fill="#0f1628" stroke="#2a3558"/>
+  <rect x="130" y="320" width="140" height="46" rx="10" fill="#1b4dff"/>
+
+  <rect x="700" y="170" width="340" height="196" rx="12" fill="#0f1628" stroke="#2a3558"/>
+  <rect x="700" y="390" width="340" height="200" rx="12" fill="#0f1628" stroke="#2a3558"/>
+
+  <text x="130" y="150" font-family="Segoe UI, Arial" font-size="18" fill="#9fb3d9">Folder</text>
+  <text x="130" y="235" font-family="Segoe UI, Arial" font-size="18" fill="#9fb3d9">Format A</text>
+  <text x="400" y="235" font-family="Segoe UI, Arial" font-size="18" fill="#9fb3d9">Format B</text>
+  <text x="155" y="350" font-family="Segoe UI, Arial" font-size="16" fill="#ffffff">Start Check</text>
+
+  <text x="720" y="200" font-family="Segoe UI, Arial" font-size="18" fill="#9fb3d9">Progress</text>
+  <text x="720" y="420" font-family="Segoe UI, Arial" font-size="18" fill="#9fb3d9">Log</text>
+</svg>
