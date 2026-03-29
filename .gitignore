@@ -1,0 +1,24 @@
+﻿# Build output
+bin/
+obj/
+
+# Publish output
+publish/
+
+# Visual Studio / Rider
+.vs/
+.vscode/
+*.user
+*.userosscache
+*.suo
+*.userprefs
+*.sln.docstates
+*.rsuser
+
+# OS / tooling
+.dotnet/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
